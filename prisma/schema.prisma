@@ -1,0 +1,283 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USERS & AUTH
+// ============================================
+
+enum UserRole {
+  ADMIN
+  CUSTOMER
+  DELIVERY
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         UserRole
+  status       UserStatus  @default(ACTIVE)
+  
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  
+  // Relations
+  customer     Customer?
+  deliveryRider DeliveryRider?
+  
+  @@index([email])
+  @@index([role])
+}
+
+// Customer profile (extends User)
+model Customer {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  barangay  String   // Fixed list: Zone 1-6, Buray, Lipata, Pequit, Villas
+  address   String   // Detailed address (household name, lot #, etc)
+  
+  orders    Order[]
+  feedback  Feedback[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+// Delivery rider profile (extends User)
+model DeliveryRider {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  vehicleType String?  // e.g., "Motorcycle", "Truck"
+  plateNumber String?
+  
+  deliveries  Delivery[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+// ============================================
+// PRODUCTS & INVENTORY
+// ============================================
+
+enum ProductType {
+  WATER        // Per gallon refill
+  CONTAINER    // Container sales/rentals
+}
+
+enum WaterType {
+  MINERAL
+  ALKALINE     // Future expansion
+  DISTILLED    // Future expansion
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  type        ProductType
+  waterType   WaterType?  // Only for WATER type products
+  
+  price       Float       // Price per unit (gallon or container)
+  unit        String      // "gallon", "5-gallon jug", etc
+  
+  isActive    Boolean     @default(true)
+  
+  inventory   Inventory?
+  orderItems  OrderItem[]
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  @@index([type])
+  @@index([isActive])
+}
+
+model Inventory {
+  id            String   @id @default(cuid())
+  productId     String   @unique
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  currentStock  Int      @default(0)
+  minStock      Int      @default(10)  // Low stock alert threshold
+  
+  lastRestocked DateTime?
+  updatedAt     DateTime @updatedAt
+  
+  @@index([productId])
+}
+
+// ============================================
+// ORDERS & DELIVERY
+// ============================================
+
+enum OrderStatus {
+  PENDING       // Just created
+  CONFIRMED     // Admin confirmed
+  PREPARING     // Being prepared
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum DeliveryType {
+  FLEXIBLE      // Along route, single customer
+  SCHEDULED     // Bulk truck delivery
+}
+
+enum PaymentMethod {
+  COD           // Cash on delivery (MVP)
+  GCASH         // Future
+  PAYMAYA       // Future
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+}
+
+model Order {
+  id            String         @id @default(cuid())
+  orderNumber   String         @unique // e.g., "ORD-2026-0001"
+  
+  customerId    String
+  customer      Customer       @relation(fields: [customerId], references: [id])
+  
+  status        OrderStatus    @default(PENDING)
+  deliveryType  DeliveryType   @default(FLEXIBLE)
+  
+  // Delivery details
+  deliveryBarangay String
+  deliveryAddress  String
+  deliveryNotes    String?     // Special instructions
+  
+  // Payment
+  paymentMethod PaymentMethod  @default(COD)
+  paymentStatus PaymentStatus  @default(PENDING)
+  totalAmount   Float
+  
+  // Relationships
+  items         OrderItem[]
+  delivery      Delivery?
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  @@index([customerId])
+  @@index([status])
+  @@index([deliveryType])
+  @@index([orderNumber])
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  
+  quantity  Int
+  price     Float    // Price at time of order
+  subtotal  Float    // quantity * price
+  
+  @@index([orderId])
+  @@index([productId])
+}
+
+enum DeliveryStatus {
+  ASSIGNED      // Assigned to rider
+  PICKED_UP     // Rider picked up order
+  IN_TRANSIT    // On the way
+  DELIVERED     // Successfully delivered
+  FAILED        // Delivery failed
+}
+
+model Delivery {
+  id            String         @id @default(cuid())
+  orderId       String         @unique
+  order         Order          @relation(fields: [orderId], references: [id])
+  
+  riderId       String
+  rider         DeliveryRider  @relation(fields: [riderId], references: [id])
+  
+  status        DeliveryStatus @default(ASSIGNED)
+  deliveryType  DeliveryType
+  
+  // Timestamps
+  assignedAt    DateTime       @default(now())
+  pickedUpAt    DateTime?
+  deliveredAt   DateTime?
+  
+  notes         String?        // Delivery notes from rider
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  @@index([riderId])
+  @@index([status])
+  @@index([deliveryType])
+}
+
+// ============================================
+// FEEDBACK & SUPPORT
+// ============================================
+
+enum FeedbackType {
+  COMPLAINT
+  SUGGESTION
+  COMPLIMENT
+  INQUIRY
+}
+
+enum FeedbackStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model Feedback {
+  id         String         @id @default(cuid())
+  customerId String
+  customer   Customer       @relation(fields: [customerId], references: [id])
+  
+  type       FeedbackType
+  status     FeedbackStatus @default(OPEN)
+  subject    String
+  message    String
+  
+  adminResponse String?
+  
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  
+  @@index([customerId])
+  @@index([status])
+  @@index([type])
+}
