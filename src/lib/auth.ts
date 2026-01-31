@@ -35,8 +35,16 @@ export const authOptions: NextAuthOptions = {
                 );
 
                 if (!isValid) {
+                    console.log(`[Auth] Invalid password for ${credentials.email}`);
                     return null;
                 }
+
+                if (user.status === "SUSPENDED") {
+                    console.log(`[Auth] User ${credentials.email} is SUSPENDED`);
+                    throw new Error("Your account has been suspended. Please contact the administrator.");
+                }
+
+                console.log(`[Auth] Login successful for ${credentials.email}`);
 
                 return {
                     id: user.id,

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -10,10 +10,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 
 export default function LoginPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+
+    // Check for error parameter in URL (e.g., ?error=Suspended)
+    useEffect(() => {
+        const errorParam = searchParams.get('error');
+        if (errorParam === 'Suspended') {
+            setError("Your account has been suspended. Please contact the administrator.");
+            // Clean the URL by removing the error parameter
+            router.replace('/login');
+        }
+    }, [searchParams, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -73,6 +84,7 @@ export default function LoginPage() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
+                            autoComplete="email"
                         />
                         <Input
                             type="password"
@@ -81,6 +93,7 @@ export default function LoginPage() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
+                            autoComplete="current-password"
                         />
                         <div className="text-right">
                             <Link href="#" className="text-sm text-blue-600 hover:underline">

@@ -1,12 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import Link from "next/link";
-import { OrderActions } from "@/components/admin/OrderActions";
-import { RiderAssignment } from "@/components/admin/RiderAssignment";
+import { AcceptAndAssign } from "@/components/admin/AcceptAndAssign";
 import React from 'react';
 
 // Create actions file separately? For now, we will just display details.
@@ -37,6 +36,10 @@ export default async function OrderDetailsPage({ params }: { params: Promise<{ i
                         }
                     }
                 }
+            },
+            // @ts-ignore - Prisma client needs regeneration
+            history: {
+                orderBy: { createdAt: 'asc' }
             }
         }
     });
@@ -66,7 +69,7 @@ export default async function OrderDetailsPage({ params }: { params: Promise<{ i
                         <h1 className="text-2xl font-bold tracking-tight">Order #{order.orderNumber}</h1>
                     </div>
                     <p className="ml-14 text-sm text-gray-500">
-                        Placed on {formatDate(order.createdAt)}
+                        Ordered: {formatDateTime(order.createdAt)}
                     </p>
                 </div>
 
@@ -84,7 +87,14 @@ export default async function OrderDetailsPage({ params }: { params: Promise<{ i
                     <CardContent className="space-y-4">
                         <div>
                             <p className="text-sm font-medium text-gray-500">Name</p>
-                            <p className="text-base">{order.customer.user.name}</p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-base">{order.customer.user.name}</p>
+                                {order.customer.customerType === "OUTLET_RESELLER" && (
+                                    <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-0">
+                                        Reseller
+                                    </Badge>
+                                )}
+                            </div>
                         </div>
                         <div>
                             <p className="text-sm font-medium text-gray-500">Contact</p>
@@ -147,12 +157,64 @@ export default async function OrderDetailsPage({ params }: { params: Promise<{ i
                 </Card>
             </div>
 
+            {/* Order Timeline */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Order Timeline</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-3">
+                        {/* Show order creation */}
+                        <div className="flex items-start gap-3">
+                            <div className="w-2 h-2 rounded-full bg-blue-600 mt-2"></div>
+                            <div className="flex-1">
+                                <p className="font-medium">Order Placed</p>
+                                <p className="text-sm text-gray-500">{formatDateTime(order.createdAt)}</p>
+                            </div>
+                        </div>
+
+                        {/* Show detailed history from OrderHistory */}
+                        {/* @ts-ignore - Prisma client needs regeneration */}
+                        {order.history?.map((event: any) => (
+                            <div key={event.id} className="flex items-start gap-3">
+                                <div className={`w-2 h-2 rounded-full mt-2 ${event.isEscalation ? 'bg-orange-600' :
+                                    event.failureReason ? 'bg-red-600' :
+                                        event.status === 'DELIVERED' ? 'bg-green-600' :
+                                            event.status === 'CANCELLED' ? 'bg-red-600' :
+                                                event.status === 'ASSIGNED' ? 'bg-purple-600' :
+                                                    'bg-blue-600'
+                                    }`}></div>
+                                <div className="flex-1">
+                                    <p className="font-medium">{event.description}</p>
+                                    <p className="text-sm text-gray-500">{formatDateTime(event.createdAt)}</p>
+                                    {event.failureReason && (
+                                        <p className="text-xs text-red-600 mt-1">Reason: {event.failureReason}</p>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Show delivery completion if exists */}
+                        {order.delivery?.deliveredAt && (
+                            <div className="flex items-start gap-3">
+                                <div className="w-2 h-2 rounded-full bg-green-600 mt-2"></div>
+                                <div className="flex-1">
+                                    <p className="font-medium">Delivered</p>
+                                    <p className="text-sm text-gray-500">{formatDateTime(order.delivery.deliveredAt)}</p>
+                                    <p className="text-xs text-gray-400">By: {order.delivery.rider.user.name}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Order Items */}
             <Card>
                 <CardHeader>
                     <CardTitle>Order Items</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
@@ -179,13 +241,10 @@ export default async function OrderDetailsPage({ params }: { params: Promise<{ i
                 </CardContent>
             </Card>
 
-            {/* Actions (Coming Soon) */}
+            {/* Actions */}
             <div className="flex justify-end gap-3 bg-white p-4 rounded-lg border shadow-sm sticky bottom-4">
-                {order.status === 'PENDING' && (
-                    <OrderActions orderId={order.id} />
-                )}
-                {order.status === 'CONFIRMED' && !order.delivery && (
-                    <RiderAssignment orderId={order.id} />
+                {(order.status === 'PENDING' || order.status === 'ESCALATED_TO_ADMIN') && (
+                    <AcceptAndAssign orderId={order.id} currentStatus={order.status} deliveryType={order.deliveryType} />
                 )}
             </div>
         </div>

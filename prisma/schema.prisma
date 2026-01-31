@@ -25,6 +25,11 @@ enum UserStatus {
   SUSPENDED
 }
 
+enum CustomerType {
+  REGULAR
+  OUTLET_RESELLER
+}
+
 model User {
   id           String      @id @default(cuid())
   email        String      @unique
@@ -47,20 +52,22 @@ model User {
 
 // Customer profile (extends User)
 model Customer {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String       @id @default(cuid())
+  userId       String       @unique
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  barangay  String   // Fixed list: Zone 1-6, Buray, Lipata, Pequit, Villas
-  address   String   // Detailed address (household name, lot #, etc)
+  barangay     String
+  address      String
+  customerType CustomerType @default(REGULAR)
   
-  orders    Order[]
-  feedback  Feedback[]
+  orders       Order[]
+  feedback     Feedback[]
   
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
   
   @@index([userId])
+  @@index([customerType])
 }
 
 // Delivery rider profile (extends User)
@@ -136,12 +143,16 @@ model Inventory {
 // ============================================
 
 enum OrderStatus {
-  PENDING       // Just created
-  CONFIRMED     // Admin confirmed
-  PREPARING     // Being prepared
-  OUT_FOR_DELIVERY
-  DELIVERED
-  CANCELLED
+  PENDING              // Just created
+  CONFIRMED            // Admin confirmed
+  ASSIGNED             // Rider assigned (new step in workflow)
+  PREPARING            // Being prepared
+  OUT_FOR_DELIVERY     // Rider picked up and in transit
+  DELIVERED            // Successfully delivered
+  DELIVERY_FAILED      // 1st delivery attempt failed, awaiting customer action
+  ESCALATED_TO_ADMIN   // 2nd delivery attempt failed, requires admin intervention
+  REJECTED             // Admin rejected order after escalation
+  CANCELLED            // Customer/admin cancelled
 }
 
 enum DeliveryType {
@@ -181,9 +192,16 @@ model Order {
   paymentStatus PaymentStatus  @default(PENDING)
   totalAmount   Float
   
+  // Failure tracking
+  deliveryAttempts     Int       @default(0)
+  failureReasons       String[]  @default([])
+  escalatedToAdmin     Boolean   @default(false)
+  escalatedAt          DateTime?
+  
   // Relationships
   items         OrderItem[]
   delivery      Delivery?
+  history       OrderHistory[]
   
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -280,4 +298,25 @@ model Feedback {
   @@index([customerId])
   @@index([status])
   @@index([type])
+}
+
+// ============================================
+// ORDER HISTORY
+// ============================================
+
+model OrderHistory {
+  id            String    @id @default(cuid())
+  orderId       String
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  status        String
+  description   String
+  failureReason String?
+  isEscalation  Boolean   @default(false)
+  
+  createdBy     String?   // User ID who made the change
+  createdAt     DateTime  @default(now())
+  
+  @@index([orderId])
+  @@index([createdAt])
 }

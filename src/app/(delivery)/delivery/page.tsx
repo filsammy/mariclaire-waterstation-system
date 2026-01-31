@@ -1,41 +1,36 @@
-import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+"use client";
+
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
-import { formatDate } from "@/lib/utils";
+import useSWR from "swr";
 
-export const dynamic = "force-dynamic";
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export default async function DeliveryDashboard() {
-    const session = await getServerSession(authOptions);
-
-    // Fetch rider profile to get ID
-    const rider = await prisma.deliveryRider.findUnique({
-        where: { userId: session?.user?.id }
+export default function DeliveryDashboard() {
+    const { data, error, isLoading } = useSWR('/api/delivery/tasks', fetcher, {
+        refreshInterval: 10000, // Poll every 10 seconds
+        revalidateOnFocus: true,
     });
 
-    if (!rider) return <div>Rider profile not found. Contact Admin.</div>;
+    const tasks = data?.deliveries || [];
 
-    // Fetch assigned tasks (Active only)
-    const tasks = await prisma.delivery.findMany({
-        where: {
-            riderId: rider.id,
-            status: { in: ["ASSIGNED", "PICKED_UP", "IN_TRANSIT"] }
-        },
-        include: {
-            order: {
-                include: {
-                    customer: {
-                        include: { user: { select: { name: true, phone: true } } }
-                    }
-                }
-            }
-        },
-        orderBy: { assignedAt: 'asc' }
-    });
+    if (error) {
+        return (
+            <div className="text-center text-red-600 p-8 border rounded-md">
+                Failed to load tasks. Please try again.
+            </div>
+        );
+    }
+
+    if (isLoading) {
+        return (
+            <div className="text-center text-gray-500 p-8">
+                Loading tasks...
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -47,13 +42,20 @@ export default async function DeliveryDashboard() {
             </header>
 
             <div className="space-y-4">
-                {tasks.map(task => (
+                {tasks.map((task: any) => (
                     <Link href={`/delivery/tasks/${task.id}`} key={task.id} className="block">
                         <Card className="hover:border-blue-300 transition-colors">
                             <div className="p-4 space-y-3">
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <div className="font-bold text-lg">{task.order.customer.user.name}</div>
+                                        <div className="font-bold text-lg flex items-center gap-2">
+                                            {task.order.customer.user.name}
+                                            {task.order.customer.customerType === "OUTLET_RESELLER" && (
+                                                <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-0 text-xs">
+                                                    Reseller
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <div className="text-sm text-gray-500">{task.order.deliveryBarangay}</div>
                                     </div>
                                     <Badge className={

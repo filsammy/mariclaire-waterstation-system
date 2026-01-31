@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/Card";
 import { registerSchema, type RegisterInput } from "@/lib/validations";
 import { ZodError } from "zod";
+import { ALL_BARANGAYS } from "@/lib/deliveryConfig";
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -92,18 +93,7 @@ export default function RegisterPage() {
         }
     };
 
-    const barangayOptions = [
-        { label: "Zone 1", value: "Zone 1" },
-        { label: "Zone 2", value: "Zone 2" },
-        { label: "Zone 3", value: "Zone 3" },
-        { label: "Zone 4", value: "Zone 4" },
-        { label: "Zone 5", value: "Zone 5" },
-        { label: "Zone 6", value: "Zone 6" },
-        { label: "Buray", value: "Buray" },
-        { label: "Lipata", value: "Lipata" },
-        { label: "Pequit", value: "Pequit" },
-        { label: "Villas", value: "Villas" },
-    ];
+    const barangayOptions = ALL_BARANGAYS.map(b => ({ label: b, value: b }));
 
     return (
         <div className="flex min-h-screen items-center justify-center p-4 py-8">

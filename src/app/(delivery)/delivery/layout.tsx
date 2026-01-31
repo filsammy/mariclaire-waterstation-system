@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { DeliveryNav } from "@/components/layout/DeliveryNav";
+import { RiderStatusChecker } from "@/components/auth/RiderStatusChecker";
 
 export default async function DeliveryLayout({
     children,
@@ -20,6 +21,7 @@ export default async function DeliveryLayout({
 
     return (
         <div className="flex min-h-screen flex-col md:flex-row bg-gray-50 pb-16 md:pb-0">
+            <RiderStatusChecker />
             <DeliveryNav />
 
             <main className="flex-1 p-4 md:p-8 w-full max-w-lg mx-auto md:max-w-4xl">

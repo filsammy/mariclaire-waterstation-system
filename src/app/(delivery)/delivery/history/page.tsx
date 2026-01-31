@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,10 @@ export default async function DeliveryHistoryPage() {
                 include: { customer: { include: { user: true } } }
             }
         },
-        orderBy: { deliveredAt: 'desc' },
+        orderBy: [
+            { deliveredAt: 'desc' },
+            { updatedAt: 'desc' }
+        ],
         take: 50
     });
 
@@ -40,7 +43,8 @@ export default async function DeliveryHistoryPage() {
                         <CardContent className="pt-4 pb-4 flex items-center justify-between">
                             <div>
                                 <p className="font-bold">{task.order.customer.user.name}</p>
-                                <p className="text-xs text-gray-500">{formatDate(task.deliveredAt || task.updatedAt)}</p>
+                                <p className="text-xs text-gray-500">Order #{task.order.orderNumber}</p>
+                                <p className="text-xs text-gray-500">{formatDateTime(task.deliveredAt || task.updatedAt)}</p>
                                 <p className="text-sm mt-1">{task.order.deliveryBarangay}</p>
                             </div>
                             <div className="text-right">

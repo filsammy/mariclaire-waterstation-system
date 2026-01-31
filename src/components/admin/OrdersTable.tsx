@@ -8,25 +8,37 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Order, OrderStatus, DeliveryType } from "@prisma/client";
 import Link from "next/link";
+import { Truck, Bike } from "lucide-react";
+import useSWR from "swr";
 
 // Extended type to include relations
 type OrderWithRelations = Order & {
     customer: {
+        customerType: "REGULAR" | "OUTLET_RESELLER";
         user: { name: string; email: string };
     };
     _count: { items: number };
 };
 
-export function OrdersTable({ initialOrders }: { initialOrders: OrderWithRelations[] }) {
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+export function OrdersTable() {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<OrderStatus | "ALL">("ALL");
-    const [orders] = useState<OrderWithRelations[]>(initialOrders);
     const [isPending, startTransition] = useTransition();
 
-    // Step 1: Debounce (Already applied)
+    // Fetch orders with SWR
+    const { data, error, isLoading } = useSWR('/api/admin/orders', fetcher, {
+        refreshInterval: 10000, // Poll every 10 seconds
+        revalidateOnFocus: true,
+    });
+
+    const orders: OrderWithRelations[] = data?.orders || [];
+
+    // Debounce search term
     const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-    // Step 3: Memoize filtering
+    // Memoize filtering
     const filteredOrders = useMemo(() => {
         return orders.filter((order) => {
             const matchesSearch =
@@ -58,6 +70,22 @@ export function OrdersTable({ initialOrders }: { initialOrders: OrderWithRelatio
             default: return "outline";
         }
     };
+
+    if (error) {
+        return (
+            <div className="text-center text-red-600 p-8 border rounded-md">
+                Failed to load orders. Please try again.
+            </div>
+        );
+    }
+
+    if (isLoading) {
+        return (
+            <div className="text-center text-gray-500 p-8">
+                Loading orders...
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-4">
@@ -116,12 +144,24 @@ export function OrdersTable({ initialOrders }: { initialOrders: OrderWithRelatio
                                         <div className="text-sm font-medium text-blue-600">
                                             <Link href={`/admin/orders/${order.id}`}>{order.orderNumber}</Link>
                                         </div>
-                                        <div className="text-xs text-gray-500">
-                                            {order.deliveryType === "SCHEDULED" ? "🚚 Scheduled" : "🛵 Flexible"}
+                                        <div className="text-xs text-gray-500 flex items-center">
+                                            {order.deliveryType === "SCHEDULED" ? (
+                                                <>
+                                                    <Truck className="h-3 w-3 mr-1" /> Scheduled
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Bike className="h-3 w-3 mr-1" /> Flexible
+                                                </>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm font-medium text-gray-900">{order.customer.user.name}</div>
+                                        <div className="text-sm font-medium text-gray-900">{order.customer.user.name} {order.customer.customerType === "OUTLET_RESELLER" && (
+                                            <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-0">
+                                                Reseller
+                                            </Badge>
+                                        )}</div>
                                         <div className="text-xs text-gray-500">{order.deliveryBarangay}</div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">

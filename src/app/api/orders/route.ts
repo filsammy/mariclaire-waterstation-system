@@ -84,6 +84,27 @@ export async function POST(req: Request) {
                 totalAmount += product.price * item.quantity;
             }
 
+            // --- PRICING LOGIC ---
+            // Check for Outlet/Reseller Bulk Discount
+            // Rule: If Customer is OUTLET_RESELLER AND Total Water Bottles >= 10, price is 20.00 each.
+
+            // 1. Count total water bottles
+            let totalWaterBottles = 0;
+            items.forEach(item => {
+                const product = products.find(p => p.id === item.productId);
+                if (product?.type === "WATER") {
+                    totalWaterBottles += item.quantity;
+                }
+            });
+
+            // 2. Determine if discount applies
+            const isReseller = customer.customerType === "OUTLET_RESELLER";
+            const applyDiscount = isReseller && totalWaterBottles >= 10;
+            const OUTLET_PRICE = 20.00;
+
+            // Recalculate totalAmount based on new logic
+            totalAmount = 0;
+
             // Create Order
             const newOrder = await tx.order.create({
                 data: {
@@ -95,19 +116,35 @@ export async function POST(req: Request) {
                     deliveryAddress,
                     deliveryNotes,
                     paymentMethod,
-                    totalAmount,
+                    totalAmount: 0, // Will update after calculating items (or just calc here)
                     items: {
                         create: items.map(item => {
                             const product = products.find(p => p.id === item.productId)!;
+
+                            // Apply discount if product is WATER and discount conditions met
+                            let finalPrice = product.price;
+                            if (product.type === "WATER" && applyDiscount) {
+                                finalPrice = OUTLET_PRICE;
+                            }
+
+                            const subtotal = finalPrice * item.quantity;
+                            totalAmount += subtotal;
+
                             return {
                                 productId: item.productId,
                                 quantity: item.quantity,
-                                price: product.price,
-                                subtotal: product.price * item.quantity
+                                price: finalPrice,
+                                subtotal: subtotal
                             };
                         })
                     }
                 }
+            });
+
+            // Update total amount on the order record
+            await tx.order.update({
+                where: { id: newOrder.id },
+                data: { totalAmount }
             });
 
             // Update Inventory

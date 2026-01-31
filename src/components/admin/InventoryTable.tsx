@@ -47,7 +47,7 @@ export function InventoryTable({ initialProducts }: { initialProducts: ProductWi
                 </Button>
             </div>
 
-            <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+            <div className="rounded-md border bg-white shadow-sm overflow-hidden overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>

@@ -1,54 +1,55 @@
-import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+"use client";
+
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/utils";
+import useSWR from "swr";
+import { useSession } from "next-auth/react";
 
-export const dynamic = "force-dynamic";
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export default async function CustomerDashboard() {
-    const session = await getServerSession(authOptions);
-
-    if (!session) return null;
-
-    // Fetch active order
-    const activeOrder = await prisma.order.findFirst({
-        where: {
-            customer: {
-                // We assume we can find customer by userId. 
-                // Need to fetch user's customer profile first or query by relation if possible.
-                // Prisma Schema: Customer linked to User via userId.
-                userId: session.user.id
-            },
-            status: {
-                in: ["PENDING", "CONFIRMED", "PREPARING", "OUT_FOR_DELIVERY"]
-            }
-        },
-        include: {
-            _count: { select: { items: true } }
-        },
-        orderBy: { createdAt: 'desc' }
+export default function CustomerDashboard() {
+    const { data: session } = useSession();
+    const { data, error, isLoading } = useSWR('/api/customer/orders', fetcher, {
+        refreshInterval: 15000, // Poll every 15 seconds
+        revalidateOnFocus: true,
     });
 
-    // Recent 3 completed
-    const recentOrders = await prisma.order.findMany({
-        where: {
-            customer: { userId: session.user.id },
-            status: { in: ["DELIVERED", "CANCELLED"] }
-        },
-        take: 3,
-        orderBy: { createdAt: 'desc' }
-    });
+    const orders = data?.orders || [];
+
+    // Filter active and recent orders
+    const activeOrder = orders.find((order: any) =>
+        ["PENDING", "CONFIRMED", "PREPARING", "OUT_FOR_DELIVERY", "ASSIGNED"].includes(order.status)
+    );
+
+    const recentOrders = orders
+        .filter((order: any) => ["DELIVERED", "CANCELLED", "DELIVERY_FAILED", "ESCALATED_TO_ADMIN", "REJECTED"].includes(order.status))
+        .slice(0, 3);
+
+    if (error) {
+        return (
+            <div className="text-center text-red-600 p-8 border rounded-md">
+                Failed to load orders. Please try again.
+            </div>
+        );
+    }
+
+    if (isLoading) {
+        return (
+            <div className="text-center text-gray-500 p-8">
+                Loading your dashboard...
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
             <header className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-blue-900">Hello, {session.user.name?.split(' ')[0]}! 👋</h1>
-                    <p className="text-gray-500 text-sm">Thirsty? Order water now.</p>
+                    <h1 className="text-2xl font-bold text-blue-900">Hello, {session?.user?.name?.split(' ')[0]}!</h1>
+                    <p className="text-gray-500 text-sm">Fresh water, delivered when you need it.</p>
                 </div>
             </header>
 
@@ -56,7 +57,7 @@ export default async function CustomerDashboard() {
             <section>
                 <Link href="/customer/order">
                     <Button size="lg" className="w-full h-16 text-lg shadow-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 border-none">
-                        <span className="mr-2">💧</span> Order Refill Now
+                        Order Refill Now
                     </Button>
                 </Link>
             </section>
@@ -78,7 +79,7 @@ export default async function CustomerDashboard() {
                             <div className="space-y-2 text-sm text-blue-800">
                                 <div className="flex justify-between">
                                     <span>Items</span>
-                                    <span className="font-medium">{activeOrder._count.items} item(s)</span>
+                                    <span className="font-medium">{activeOrder.items?.length || 0} item(s)</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Total</span>
@@ -106,7 +107,7 @@ export default async function CustomerDashboard() {
                 </div>
 
                 <div className="space-y-3">
-                    {recentOrders.map(order => (
+                    {recentOrders.map((order: any) => (
                         <Card key={order.id} className="overflow-hidden">
                             <div className="flex items-center justify-between p-4">
                                 <div>

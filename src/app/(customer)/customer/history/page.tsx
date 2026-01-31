@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatDate, formatCurrency, formatDateTime } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
@@ -32,7 +32,7 @@ export default async function OrderHistoryPage() {
                             <div className="p-4 flex items-center justify-between">
                                 <div>
                                     <div className="font-bold text-blue-900">{order.orderNumber}</div>
-                                    <div className="text-sm text-gray-500">{formatDate(order.createdAt)}</div>
+                                    <div className="text-sm text-gray-500">{formatDateTime(order.createdAt)}</div>
                                 </div>
                                 <Badge variant={
                                     order.status === 'DELIVERED' ? 'success' :

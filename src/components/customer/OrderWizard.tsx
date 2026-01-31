@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Product, Customer } from "@prisma/client";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { orderSchema } from "@/lib/schema";
+import { ALL_BARANGAYS, getDeliveryTypeForBarangay, getDeliveryMethodName } from "@/lib/deliveryConfig";
 
 // Extended product type with inventory
 type ProductWithStock = Product & { inventory: { currentStock: number } | null };
@@ -31,16 +32,40 @@ export function OrderWizard({ products, customer }: OrderWizardProps) {
         barangay: customer.barangay,
         address: customer.address,
         notes: "",
-        deliveryType: "FLEXIBLE"
+        deliveryType: getDeliveryTypeForBarangay(customer.barangay)
     });
+
+    // Auto-update delivery type when barangay changes
+    useEffect(() => {
+        const newDeliveryType = getDeliveryTypeForBarangay(deliveryInfo.barangay);
+        setDeliveryInfo(prev => ({ ...prev, deliveryType: newDeliveryType }));
+    }, [deliveryInfo.barangay]);
 
     // Derived State
     const cartItemCount = useMemo(() => Object.values(cart).reduce((a, b) => a + b, 0), [cart]);
 
-    const cartTotal = useMemo(() => Object.entries(cart).reduce((total, [id, qty]) => {
-        const product = products.find(p => p.id === id);
-        return total + (product ? product.price * qty : 0);
-    }, 0), [cart, products]);
+    const cartTotal = useMemo(() => {
+        // Reseller Logic check
+        let totalWaterBottles = 0;
+        Object.entries(cart).forEach(([id, qty]) => {
+            const product = products.find(p => p.id === id);
+            if (product?.type === "WATER") totalWaterBottles += qty;
+        });
+
+        // @ts-ignore - customerType might not be in the generated type yet but exists in DB
+        const isResellerDiscount = customer.customerType === "OUTLET_RESELLER" && totalWaterBottles >= 10;
+
+        return Object.entries(cart).reduce((total, [id, qty]) => {
+            const product = products.find(p => p.id === id);
+            if (!product) return total;
+
+            let price = product.price;
+            if (product.type === "WATER" && isResellerDiscount) {
+                price = 20.00;
+            }
+            return total + (price * qty);
+        }, 0);
+    }, [cart, products, customer]);
 
     // Handlers
     const addToCart = (productId: string) => {
@@ -187,18 +212,7 @@ export function OrderWizard({ products, customer }: OrderWizardProps) {
                 <Card className="p-4 space-y-4">
                     <Select
                         label="Barangay"
-                        options={[
-                            { label: "Zone 1", value: "Zone 1" },
-                            { label: "Zone 2", value: "Zone 2" },
-                            { label: "Zone 3", value: "Zone 3" },
-                            { label: "Zone 4", value: "Zone 4" },
-                            { label: "Zone 5", value: "Zone 5" },
-                            { label: "Zone 6", value: "Zone 6" },
-                            { label: "Buray", value: "Buray" },
-                            { label: "Lipata", value: "Lipata" },
-                            { label: "Pequit", value: "Pequit" },
-                            { label: "Villas", value: "Villas" }
-                        ]}
+                        options={ALL_BARANGAYS.map(b => ({ label: b, value: b }))}
                         value={deliveryInfo.barangay}
                         onChange={(e) => setDeliveryInfo({ ...deliveryInfo, barangay: e.target.value })}
                     />
@@ -218,31 +232,21 @@ export function OrderWizard({ products, customer }: OrderWizardProps) {
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">Delivery Type</label>
-                        <div className="flex gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setDeliveryInfo({ ...deliveryInfo, deliveryType: "FLEXIBLE" })}
-                                className={`flex-1 py-3 px-2 rounded border text-sm font-medium text-center transition-colors ${deliveryInfo.deliveryType === "FLEXIBLE"
-                                    ? "bg-blue-50 border-blue-500 text-blue-700"
-                                    : "bg-white border-gray-200 text-gray-600"
-                                    }`}
-                            >
-                                <div>🛵 Flexible</div>
-                                <div className="text-xs font-normal opacity-75">Anytime today</div>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setDeliveryInfo({ ...deliveryInfo, deliveryType: "SCHEDULED" })}
-                                className={`flex-1 py-3 px-2 rounded border text-sm font-medium text-center transition-colors ${deliveryInfo.deliveryType === "SCHEDULED"
-                                    ? "bg-blue-50 border-blue-500 text-blue-700"
-                                    : "bg-white border-gray-200 text-gray-600"
-                                    }`}
-                            >
-                                <div>🚚 Scheduled</div>
-                                <div className="text-xs font-normal opacity-75">Next Cargo Batch</div>
-                            </button>
+                    {/* Auto-determined Delivery Method */}
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-700">Delivery Method</p>
+                                <p className="text-xs text-gray-500">Auto-selected based on your barangay</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-bold text-blue-700">
+                                    {deliveryInfo.deliveryType === "FLEXIBLE" ? "🛺 Tricycle" : "🚚 Truck"}
+                                </p>
+                                <p className="text-xs text-blue-600">
+                                    {getDeliveryMethodName(deliveryInfo.deliveryType as any)}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </Card>
@@ -275,10 +279,40 @@ export function OrderWizard({ products, customer }: OrderWizardProps) {
                     <ul className="space-y-2 text-sm">
                         {Object.entries(cart).map(([id, qty]) => {
                             const product = products.find(p => p.id === id);
+                            if (!product) return null;
+
+                            // Calculate specific item price for display
+                            // (Repeating logic slightly for display purposes - ideally reusable function)
+                            let totalWaterBottles = 0;
+                            Object.entries(cart).forEach(([pid, q]) => {
+                                const p = products.find(prod => prod.id === pid);
+                                if (p?.type === "WATER") totalWaterBottles += q;
+                            });
+                            // @ts-ignore
+                            const isResellerDiscount = customer.customerType === "OUTLET_RESELLER" && totalWaterBottles >= 10;
+
+                            let effectivePrice = product.price;
+                            const hasDiscount = product.type === "WATER" && isResellerDiscount;
+                            if (hasDiscount) effectivePrice = 20.00;
+
                             return (
-                                <li key={id} className="flex justify-between">
-                                    <span>{qty}x {product?.name}</span>
-                                    <span className="font-medium">{formatCurrency((product?.price || 0) * qty)}</span>
+                                <li key={id} className="flex justify-between items-center">
+                                    <div className="flex flex-col">
+                                        <span>{qty}x {product.name}</span>
+                                        {hasDiscount && (
+                                            <span className="text-xs text-purple-600 bg-purple-50 px-1 rounded w-fit">
+                                                Reseller Price (₱20.00)
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="font-medium block">{formatCurrency(effectivePrice * qty)}</span>
+                                        {hasDiscount && (
+                                            <span className="text-xs text-gray-400 line-through">
+                                                {formatCurrency(product.price * qty)}
+                                            </span>
+                                        )}
+                                    </div>
                                 </li>
                             );
                         })}
@@ -296,7 +330,7 @@ export function OrderWizard({ products, customer }: OrderWizardProps) {
                     </div>
                     <div className="flex justify-between">
                         <span className="text-gray-500">Method:</span>
-                        <span className="font-medium">{deliveryInfo.deliveryType === 'FLEXIBLE' ? 'Flexible (Motor)' : 'Scheduled (Truck)'}</span>
+                        <span className="font-medium">{deliveryInfo.deliveryType === 'FLEXIBLE' ? 'Tricycle Delivery' : 'Truck Delivery'}</span>
                     </div>
                     <div className="flex justify-between">
                         <span className="text-gray-500">Payment:</span>

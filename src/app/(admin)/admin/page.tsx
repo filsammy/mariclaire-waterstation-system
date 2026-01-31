@@ -1,59 +1,54 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
-import { Suspense } from "react";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Banknote, Clock, Truck, AlertTriangle } from "lucide-react";
+import useSWR from "swr";
 
-async function DashboardStats() {
-    // Parallel data fetching
-    const [
-        pendingOrders,
-        todaySales,
-        lowStockItems,
-        activeDeliveries
-    ] = await Promise.all([
-        // 1. Pending Orders count
-        prisma.order.count({
-            where: { status: "PENDING" }
-        }),
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-        // 2. Today's Sales (Confirmed/Delivered orders created today)
-        prisma.order.aggregate({
-            _sum: { totalAmount: true },
-            where: {
-                status: { in: ["DELIVERED", "CONFIRMED", "OUT_FOR_DELIVERY"] },
-                createdAt: {
-                    gte: new Date(new Date().setHours(0, 0, 0, 0))
-                }
-            }
-        }),
+function DashboardStats() {
+    const { data, error, isLoading } = useSWR('/api/admin/stats', fetcher, {
+        refreshInterval: 10000, // Poll every 10 seconds
+        revalidateOnFocus: true, // Refresh when window regains focus
+    });
 
-        // 3. Low Stock Items count
-        prisma.inventory.count({
-            where: {
-                currentStock: { lte: prisma.inventory.fields.minStock }
-            }
-        }),
+    if (error) {
+        return (
+            <div className="text-center text-red-600 p-4">
+                Failed to load dashboard stats
+            </div>
+        );
+    }
 
-        // 4. Active Deliveries count
-        prisma.delivery.count({
-            where: {
-                status: { in: ["ASSIGNED", "PICKED_UP", "IN_TRANSIT"] }
-            }
-        })
-    ]);
+    if (isLoading || !data) {
+        return (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {[...Array(4)].map((_, i) => (
+                    <Card key={i} className="animate-pulse">
+                        <CardHeader className="pb-2">
+                            <div className="h-4 bg-gray-200 rounded w-24"></div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-8 bg-gray-200 rounded w-32"></div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        );
+    }
 
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-gray-500">Today's Sales</CardTitle>
-                    <span className="text-2xl">💰</span>
+                    <Banknote className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{formatCurrency(todaySales._sum.totalAmount || 0)}</div>
+                    <div className="text-2xl font-bold">{formatCurrency(data.todaySales)}</div>
                     <p className="text-xs text-gray-500">
-                        For confirmed orders
+                        From delivered orders today
                     </p>
                 </CardContent>
             </Card>
@@ -61,10 +56,10 @@ async function DashboardStats() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-gray-500">Pending Orders</CardTitle>
-                    <span className="text-2xl">⏳</span>
+                    <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{pendingOrders}</div>
+                    <div className="text-2xl font-bold">{data.pendingOrders}</div>
                     <p className="text-xs text-gray-500">
                         Awaiting action
                     </p>
@@ -74,10 +69,10 @@ async function DashboardStats() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-gray-500">Active Deliveries</CardTitle>
-                    <span className="text-2xl">🚚</span>
+                    <Truck className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{activeDeliveries}</div>
+                    <div className="text-2xl font-bold">{data.activeDeliveries}</div>
                     <p className="text-xs text-gray-500">
                         Currently on route
                     </p>
@@ -87,10 +82,10 @@ async function DashboardStats() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-gray-500">Low Stock Alerts</CardTitle>
-                    <span className="text-2xl">⚠️</span>
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold text-red-600">{lowStockItems}</div>
+                    <div className="text-2xl font-bold text-red-600">{data.lowStockItems}</div>
                     <p className="text-xs text-gray-500">
                         Products need restocking
                     </p>
@@ -107,9 +102,7 @@ export default function AdminDashboard() {
                 <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
             </div>
 
-            <Suspense fallback={<LoadingSpinner />}>
-                <DashboardStats />
-            </Suspense>
+            <DashboardStats />
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <Card className="col-span-4">

@@ -19,3 +19,15 @@ export function formatDate(date: Date | string) {
         year: "numeric",
     });
 }
+
+export function formatDateTime(date: Date | string) {
+    return new Intl.DateTimeFormat("en-PH", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+    }).format(new Date(date));
+}
+
