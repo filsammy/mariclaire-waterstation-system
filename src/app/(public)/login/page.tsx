@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/Card";
 
-export default function LoginPage() {
+import { Suspense } from "react";
+
+function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [email, setEmail] = useState("");
@@ -62,58 +64,66 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center p-4">
-            <Card className="w-full max-w-md">
-                <CardHeader>
-                    <CardTitle className="text-center text-2xl font-bold text-blue-700">
-                        MariClaire Water Station
-                    </CardTitle>
-                    <p className="text-center text-gray-500">Sign in to your account</p>
-                </CardHeader>
-                <form onSubmit={handleSubmit}>
-                    <CardContent className="space-y-4">
-                        {error && (
-                            <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
-                                {error}
-                            </div>
-                        )}
-                        <Input
-                            type="email"
-                            label="Email"
-                            placeholder="juan@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            autoComplete="email"
-                        />
-                        <Input
-                            type="password"
-                            label="Password"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            autoComplete="current-password"
-                        />
-                        <div className="text-right">
-                            <Link href="#" className="text-sm text-blue-600 hover:underline">
-                                Forgot password?
-                            </Link>
+        <Card className="w-full max-w-md">
+            <CardHeader>
+                <CardTitle className="text-center text-2xl font-bold text-blue-700">
+                    MariClaire Water Station
+                </CardTitle>
+                <p className="text-center text-gray-500">Sign in to your account</p>
+            </CardHeader>
+            <form onSubmit={handleSubmit}>
+                <CardContent className="space-y-4">
+                    {error && (
+                        <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
+                            {error}
                         </div>
-                    </CardContent>
-                    <CardFooter className="flex flex-col space-y-4">
-                        <Button type="submit" className="w-full" isLoading={loading}>
-                            Sign In
-                        </Button>
-                        <p className="text-center text-sm text-gray-600">
-                            Don't have an account?{" "}
-                            <Link href="/register" className="font-medium text-blue-600 hover:underline">
-                                Register here
-                            </Link>
-                        </p>
-                    </CardFooter>
-                </form>
-            </Card>
+                    )}
+                    <Input
+                        type="email"
+                        label="Email"
+                        placeholder="juan@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        autoComplete="email"
+                    />
+                    <Input
+                        type="password"
+                        label="Password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        autoComplete="current-password"
+                    />
+                    <div className="text-right">
+                        <Link href="#" className="text-sm text-blue-600 hover:underline">
+                            Forgot password?
+                        </Link>
+                    </div>
+                </CardContent>
+                <CardFooter className="flex flex-col space-y-4">
+                    <Button type="submit" className="w-full" isLoading={loading}>
+                        Sign In
+                    </Button>
+                    <p className="text-center text-sm text-gray-600">
+                        Don't have an account?{" "}
+                        <Link href="/register" className="font-medium text-blue-600 hover:underline">
+                            Register here
+                        </Link>
+                    </p>
+                </CardFooter>
+            </form>
+        </Card>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <div className="flex min-h-screen items-center justify-center p-4">
+            <Suspense fallback={<div className="text-center">Loading...</div>}>
+                <LoginForm />
+            </Suspense>
         </div>
     );
 }
