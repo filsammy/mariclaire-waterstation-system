@@ -8,7 +8,7 @@ A full-stack web application for managing a water refilling station's operations
 
 This project is a real-world SME management system designed for water refilling stations. It provides role-based access control for administrators, customers, and delivery riders, with features spanning from order placement to delivery tracking and business analytics.
 
-**Live Demo:** _Coming Soon_  
+**Live Demo:** [Click here](https://mariclaire-waterstation-system.vercel.app/) 
 **Documentation:** [View Full Docs](./docs/)
 
 ---
@@ -216,7 +216,7 @@ This project is licensed under the MIT License.
 
 **Developer:** Fil Sammy Abawag  
 **Email:** filsammy@gmail.com  
-**Portfolio:** [WebPortfolio.com](https://webportfolio-1-psi.vercel.app/)
+**Portfolio:** [Click here](https://webportfolio-1-psi.vercel.app/)
 
 ---
 
