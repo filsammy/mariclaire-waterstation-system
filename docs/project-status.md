@@ -1,7 +1,7 @@
 # Project Status & Alignment Guide
 
-**Last Updated:** 2026-01-23
-**Phase:** Planning Complete / Starting Foundation
+**Last Updated:** 2026-02-03
+**Phase:** MVP Refinement / Bug Fixing
 
 ## Project Overview
 **MariClaire Water Refilling Station** is a full-stack web application for managing a local water business in Paranas, Samar.
@@ -26,18 +26,24 @@ We are building a solid Minimum Viable Product to launch quickly and gather feed
 - **Forms:** Large inputs, native select dropdowns, clear validation.
 
 ## Tech Stack & Architecture
-- **Framework:** Next.js 16 (App Router)
+- **Framework:** Next.js 16.1.3 (App Router)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS v4
-- **Database:** PostgreSQL + Prisma ORM v7
+- **Database:** PostgreSQL + Prisma ORM v5
 - **Auth:** NextAuth.js (Role-Based: ADMIN, CUSTOMER, DELIVERY)
 - **State:** TanStack Query (Server) + Zustand (Client)
 
 ## Current Implementation Plan
-1. **Foundation:** DB Schema, Auth, Base UI Components
-2. **Admin:** Order/Inventory Management
-3. **Customer:** Ordering & Tracking
-4. **Delivery:** Task Management
+1. **Foundation:** ✅ DB Schema, Auth, Base UI Components
+2. **Admin:** ✅ Order/Inventory Management, ✅ Rider Management
+3. **Customer:** ✅ Ordering & Tracking, ✅ Order History
+4. **Delivery:** ✅ Task Management, ✅ Delivery Workflow (Refined)
+
+## Recent Updates
+- **Delivery Workflow:** Enhanced with "Assigned" -> "Picked Up" -> "Delivered" steps.
+- **Rider Recovery:** Scripts added to recover/manage rider accounts.
+- **Deployment:** Vercel build issues debugging and resolution.
+- **Login Fixes:** Resolved redirect loops and role-based access issues.
 
 ## Developer Notes
 - **Docs:** See `/docs` for folder structure and auth guides.

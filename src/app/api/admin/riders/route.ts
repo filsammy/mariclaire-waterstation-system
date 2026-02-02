@@ -41,7 +41,6 @@ export async function GET() {
             }
         });
 
-        console.log(`[GET Riders] Found ${riders.length} riders`);
         return NextResponse.json({ riders });
     } catch (error) {
         return NextResponse.json({ error: "Failed to fetch riders" }, { status: 500 });

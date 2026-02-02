@@ -108,32 +108,40 @@ After successful login, users are redirected based on their role:
 
 ```typescript
 import { withAuth } from "next-auth/middleware";
+import { NextResponse } from "next/server";
 
-export default withAuth({
-  callbacks: {
-    authorized: ({ token, req }) => {
-      const path = req.nextUrl.pathname;
+export default withAuth(
+  function middleware(req) {
+    const token = req.nextauth.token;
+    const path = req.nextUrl.pathname;
 
-      // Admin routes
-      if (path.startsWith("/admin")) {
-        return token?.role === "ADMIN";
+    // Admin routes
+    if (path.startsWith("/admin")) {
+      if (token?.role !== "ADMIN") {
+        return NextResponse.redirect(new URL("/unauthorized", req.url));
       }
+    }
 
-      // Customer routes
-      if (path.startsWith("/customer")) {
-        return token?.role === "CUSTOMER";
+    // Customer routes
+    if (path.startsWith("/customer")) {
+      if (token?.role !== "CUSTOMER") {
+        return NextResponse.redirect(new URL("/unauthorized", req.url));
       }
+    }
 
-      // Delivery routes
-      if (path.startsWith("/delivery")) {
-        return token?.role === "DELIVERY";
+    // Delivery routes
+    if (path.startsWith("/delivery")) {
+      if (token?.role !== "DELIVERY") {
+        return NextResponse.redirect(new URL("/unauthorized", req.url));
       }
-
-      // Default: require authentication
-      return !!token;
-    },
+    }
   },
-});
+  {
+    callbacks: {
+      authorized: ({ token }) => !!token,
+    },
+  }
+);
 
 export const config = {
   matcher: ["/admin/:path*", "/customer/:path*", "/delivery/:path*"],

@@ -6,7 +6,7 @@ Complete guide to the project's folder organization and architecture.
 
 ## Overview
 
-This project follows Next.js 14 App Router conventions with a role-based route group structure. The architecture is designed for scalability, maintainability, and clear separation of concerns.
+This project follows Next.js 16 App Router conventions with a role-based route group structure. The architecture is designed for scalability, maintainability, and clear separation of concerns.
 
 **Design Principles:**
 
@@ -298,13 +298,12 @@ The `(public)`, `(admin)`, `(customer)` folders don't appear in URLs.
 **Structure:**
 
 ```
-/api/auth          → NextAuth endpoints
-/api/orders        → Order CRUD
-/api/inventory     → Stock operations
-/api/customers     → Customer management
-/api/delivery      → Delivery updates
-/api/payments      → Payment processing
-/api/reports       → Analytics data
+/api/admin         → Admin-specific operations
+/api/auth          → NextAuth endpoints (login/signup)
+/api/customer      → Customer-specific operations
+/api/delivery      → Delivery-specific operations
+/api/inventory     → Inventory management
+/api/orders        → Order processing
 ```
 
 **Security:** All routes validate authentication and authorization

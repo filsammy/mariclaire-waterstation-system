@@ -1,4 +1,4 @@
-# Water Refilling Station Business System
+# Water Refilling Station Business System (in development)
 
 A full-stack web application for managing a water refilling station's operations, including order management, inventory tracking, delivery coordination, and sales reporting.
 
@@ -21,8 +21,8 @@ This project is a real-world SME management system designed for water refilling 
 - ✅ **Delivery Coordination** - Real-time delivery task assignment and tracking
 - ✅ **Sales Analytics** - Daily and monthly reports with visual charts
 - ✅ **Customer Management** - Customer profiles and order history
-- ✅ **Payment Processing** - Cash and GCash (simulated) payment options
-- ✅ **Customer Feedback** - Report and feedback submission system
+- [ ] **Payment Processing** - Cash and GCash (simulated) payment options
+- [ ] **Customer Feedback** - Report and feedback submission system
 - ✅ **Mobile Responsive** - Optimized for desktop, tablet, and mobile devices
 
 ---
@@ -43,7 +43,7 @@ This project is a real-world SME management system designed for water refilling 
 
 ### Frontend
 
-- **Next.js 14** (App Router) - React framework with server components
+- **Next.js 16** (App Router) - React framework with server components
 - **React 18** - UI library
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Utility-first styling
@@ -214,9 +214,9 @@ This project is licensed under the MIT License.
 
 ## Contact
 
-**Developer:** Your Name  
-**Email:** your.email@example.com  
-**Portfolio:** [yourportfolio.com](https://yourportfolio.com)
+**Developer:** Fil Sammy Abawag  
+**Email:** filsammy@gmail.com  
+**Portfolio:** [WebPortfolio.com](https://webportfolio-1-psi.vercel.app/)
 
 ---
 
